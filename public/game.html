@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Play Chess</title>
+    <link rel="stylesheet" href="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css">
+    <style>
+        :root { --primary: #00d4ff; --bg: #0f172a; --card: #1e293b; }
+        body { background: var(--bg); color: white; font-family: sans-serif; margin: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+        
+        .header { background: var(--card); padding: 15px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #334155; }
+        
+        #myBoard { width: 95vw; max-width: 400px; margin: auto; border: 4px solid #334155; display: block; line-height: 0; }
+        .square-55d63 { padding: 0 !important; margin: 0 !important; }
+
+        /* UNIFORM YELLOW OUTLINES */
+        .highlight-move { box-shadow: inset 0 0 0 5px rgba(255, 255, 0, 0.8) !important; z-index: 10; }
+
+        .nav-bar { background: var(--card); display: flex; justify-content: space-around; padding: 15px 0; border-top: 1px solid #334155; }
+        .status-text { color: var(--primary); font-weight: bold; font-size: 0.9rem; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <a href="index.html" onclick="quitGame()" style="color:var(--primary); text-decoration:none">← Quit</a>
+        <div id="turnStatus" class="status-text">Your Match</div>
+        <span>Match Mode</span>
+    </div>
+
+    <div id="myBoard"></div>
+
+    <nav class="nav-bar">
+        <a href="index.html" style="color:#94a3b8; text-decoration:none; text-align:center; font-size:0.8rem;">🏠<br>Home</a>
+        <a href="friends.html" style="color:#94a3b8; text-decoration:none; text-align:center; font-size:0.8rem;">👥<br>Friends</a>
+        <a href="game.html" style="color:var(--primary); text-decoration:none; text-align:center; font-size:0.8rem;">♟️<br>Play</a>
+        <a href="profile.html" style="color:#94a3b8; text-decoration:none; text-align:center; font-size:0.8rem;">👤<br>Me</a>
+    </nav>
+
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+    <script src="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-database-compat.js"></script>
+
+    <script>
+        const firebaseConfig = { 
+            apiKey: "AIzaSyAP5BADrbyPaeR8WYVzZToWabxeVBDTo5I", 
+            databaseURL: "https://client-b83b3-default-rtdb.firebaseio.com/",
+            projectId: "client-b83b3", 
+            appId: "1:653007015347:web:5f8c425c5890d4d86f4fc6" 
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+        const urlParams = new URLSearchParams(window.location.search);
+        const roomID = urlParams.get('room');
+        const myName = localStorage.getItem('chessUser');
+
+        let board = null, game = new Chess(), myColor = 'w', sourceSquare = null;
+        const roomRef = db.ref('rooms/' + roomID);
+
+        function init() {
+            if (!roomID) { window.location.href="index.html"; return; }
+            roomRef.child('players').transaction((p) => {
+                if (!p) return { [myName]: 'w' };
+                if (!p[myName]) {
+                    const existing = Object.values(p)[0];
+                    p[myName] = (existing === 'w') ? 'b' : 'w';
+                }
+                return p;
+            }, (err, committed, snap) => {
+                myColor = snap.val()[myName];
+                setupBoard();
+                listenForMoves();
+            });
+            roomRef.child('players/' + myName).onDisconnect().remove();
+        }
+
+        function setupBoard() {
+            board = Chessboard('myBoard', {
+                draggable: false,
+                orientation: myColor === 'w' ? 'white' : 'black',
+                position: 'start',
+                pieceTheme: 'https://chessboardjs.com/img/chesspieces/wikipedia/{piece}.png'
+            });
+
+            $('#myBoard').on('click', '.square-55d63', function() {
+                const square = $(this).attr('data-square');
+                const piece = game.get(square);
+
+                if (game.turn() !== myColor) return;
+
+                if (!sourceSquare) {
+                    if (piece && piece.color === myColor) {
+                        sourceSquare = square;
+                        showMoves(square);
+                    }
+                } else {
+                    const move = game.move({ from: sourceSquare, to: square, promotion: 'q' });
+                    
+                    if (move) {
+                        board.position(game.fen());
+                        roomRef.update({ fen: game.fen(), lastMove: { from: sourceSquare, to: square } });
+                        sourceSquare = null;
+                        $('.square-55d63').removeClass('highlight-move');
+                    } else {
+                        // If tap another of your pieces, switch selection
+                        if (piece && piece.color === myColor) {
+                            sourceSquare = square;
+                            showMoves(square);
+                        } else {
+                            sourceSquare = null;
+                            $('.square-55d63').removeClass('highlight-move');
+                        }
+                    }
+                }
+            });
+        }
+
+        function showMoves(square) {
+            $('.square-55d63').removeClass('highlight-move');
+            $('.square-' + square).addClass('highlight-move');
+            
+            const moves = game.moves({ square: square, verbose: true });
+            moves.forEach(m => {
+                $('.square-' + m.to).addClass('highlight-move');
+            });
+        }
+
+        function listenForMoves() {
+            roomRef.on('value', snap => {
+                const data = snap.val();
+                if (!data) return;
+                if (data.fen && data.fen !== game.fen()) {
+                    game.load(data.fen);
+                    board.position(data.fen);
+                    $('.square-55d63').removeClass('highlight-move');
+                    if (data.lastMove) {
+                        $('.square-' + data.lastMove.from).addClass('highlight-move');
+                        $('.square-' + data.lastMove.to).addClass('highlight-move');
+                    }
+                }
+                updateStatus();
+            });
+        }
+
+        function updateStatus() {
+            let status = (game.turn() === myColor) ? "Your Turn" : "Opponent's Turn";
+            if (game.in_checkmate()) status = "Checkmate!";
+            document.getElementById('turnStatus').innerText = status;
+        }
+
+        function quitGame() {
+            roomRef.remove();
+            db.ref('challenges/' + myName).remove();
+        }
+
+        init();
+    </script>
+</body>
+</html>

@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tyga's Chess | Home</title>
+    <style>
+        :root { --primary: #00d4ff; --bg: #0f172a; --card: #1e293b; }
+        body { background: var(--bg); color: white; font-family: 'Segoe UI', sans-serif; margin: 0; padding: 20px; }
+        .logo { font-size: 1.5rem; font-weight: bold; color: var(--primary); margin-bottom: 30px; text-align: center; }
+        .card { 
+            background: var(--card); border-radius: 16px; padding: 20px; margin-bottom: 20px;
+            display: flex; align-items: center; text-decoration: none; color: white;
+            border: 1px solid #334155; transition: 0.3s;
+        }
+        .card:hover { border-color: var(--primary); transform: scale(1.02); }
+        .card-img { width: 80px; height: 80px; border-radius: 12px; margin-right: 20px; object-fit: cover; }
+        .card-info h3 { margin: 0; color: var(--primary); }
+        .card-info p { margin: 5px 0 0; color: #94a3b8; font-size: 0.9rem; }
+        .nav-bar { position: fixed; bottom: 0; left: 0; width: 100%; background: var(--card); display: flex; justify-content: space-around; padding: 15px 0; border-top: 1px solid #334155; }
+        .nav-item { color: #94a3b8; text-decoration: none; font-size: 0.75rem; text-align: center; }
+        .active { color: var(--primary); }
+    </style>
+</head>
+<body>
+    <div class="logo">Tyga Chess</div>
+    <a href="game.html" class="card">
+        <img src="https://img.freepik.com/premium-vector/two-people-playing-chess-concept-illustration_114360-5026.jpg" class="card-img">
+        <div class="card-info"><h3>Play Online</h3><p>Challenge friends in real-time PvP</p></div>
+    </a>
+    <a href="#" class="card" onclick="alert('Computer practice coming soon!')">
+        <img src="https://img.freepik.com/free-vector/human-vs-ai-concept-illustration_114360-16161.jpg" class="card-img">
+        <div class="card-info"><h3>vs Computer</h3><p>Train against the AI engine</p></div>
+    </a>
+    <nav class="nav-bar">
+        <a href="index.html" class="nav-item active">🏠<br>Home</a>
+        <a href="friends.html" class="nav-item">👥<br>Friends</a>
+        <a href="game.html" class="nav-item">♟️<br>Play</a>
+        <a href="profile.html" class="nav-item">👤<br>Me</a>
+    </nav>
+</body>
+</html>
