@@ -19,7 +19,6 @@
         .main-game-area { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 20px 0; }
         #myBoard { width: 92vw; max-width: 400px; border: 4px solid #334155; position: relative; }
 
-        /* REFINED SMALL NOTIFICATION */
         #status-overlay { 
             display: none; 
             position: absolute; 
@@ -35,6 +34,9 @@
             white-space: nowrap;
         }
         .small-notify { font-size: 0.85rem; font-weight: bold; color: white; letter-spacing: 0.5px; }
+
+        /* THE BLOOD FONT STYLE */
+        .fatality-style { color: var(--blood) !important; text-shadow: 0 0 8px rgba(239, 68, 68, 0.6); }
 
         .highlight-move { box-shadow: inset 0 0 0 3px rgba(255, 255, 0, 0.8) !important; }
         .check-warning { box-shadow: inset 0 0 0 4px var(--blood) !important; }
@@ -109,27 +111,33 @@
             });
         }
 
-        // --- THE QUIT LOGIC ---
         function manualQuit() {
-            // 1. Remove myself from the room
             playersRef.child(myName).remove().then(() => {
-                // 2. Wipe the whole room if I'm leaving
                 roomRef.remove(); 
-                // 3. Clear the URL to prevent ghosting
-                const cleanPath = window.location.origin + "/friends.html";
-                window.location.replace(cleanPath); 
+                window.location.replace(window.location.origin + "/friends.html"); 
             });
         }
 
-        function showOverlay(msg) {
+        // Updated with custom time parameter
+        function showOverlay(msg, isFatality = false, redirectDelay = 3000) {
             const overlay = document.getElementById('status-overlay');
-            document.getElementById('overlay-msg').innerText = msg;
+            const msgBox = document.getElementById('overlay-msg');
+            
+            msgBox.innerText = msg;
+            
+            // Add red blood font if it's checkmate
+            if(isFatality) {
+                msgBox.classList.add('fatality-style');
+            } else {
+                msgBox.classList.remove('fatality-style');
+            }
+
             overlay.style.display = 'block';
             clearInterval(timerInterval);
-            // After 3 seconds, send them home with a clean URL
+            
             setTimeout(() => {
                 window.location.replace(window.location.origin + "/friends.html");
-            }, 3000);
+            }, redirectDelay);
         }
 
         function startTimer() {
@@ -204,10 +212,9 @@
         }
 
         function listen() {
-            // Listen for the OTHER person leaving
             playersRef.on('child_removed', snap => {
                 if (snap.key !== myName) {
-                    showOverlay(`${snap.key.toUpperCase()} SURRENDERED`);
+                    showOverlay(`${snap.key.toUpperCase()} SURRENDERED`, false, 3000);
                 }
             });
 
@@ -245,7 +252,8 @@
             }
 
             if (game.in_checkmate()) {
-                showOverlay("CHECKMATE: FATALITY");
+                // RED BLOOD FONT + 20 SECOND WAIT
+                showOverlay("CHECKMATE: FATALITY", true, 20000);
             } else {
                 document.getElementById('turnStatus').innerText = (game.turn() === myColor) ? "Your Turn" : "Opponent Turn";
             }
