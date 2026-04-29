@@ -35,9 +35,6 @@
             white-space: nowrap;
         }
         .small-notify { font-size: 0.85rem; font-weight: bold; color: white; letter-spacing: 0.5px; }
-        
-        /* BLOOD TEXT FOR CHECKMATE */
-        .fatality-text { color: var(--blood); text-shadow: 0 0 10px rgba(239, 68, 68, 0.5); font-size: 1rem; }
 
         .highlight-move { box-shadow: inset 0 0 0 3px rgba(255, 255, 0, 0.8) !important; }
         .check-warning { box-shadow: inset 0 0 0 4px var(--blood) !important; }
@@ -72,7 +69,7 @@
     </nav>
 
     <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
-    <script src="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css"></script>
+    <script src="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-database-compat.js"></script>
@@ -112,27 +109,27 @@
             });
         }
 
+        // --- THE QUIT LOGIC ---
         function manualQuit() {
+            // 1. Remove myself from the room
             playersRef.child(myName).remove().then(() => {
+                // 2. Wipe the whole room if I'm leaving
                 roomRef.remove(); 
-                window.location.replace(window.location.origin + "/friends.html"); 
+                // 3. Clear the URL to prevent ghosting
+                const cleanPath = window.location.origin + "/friends.html";
+                window.location.replace(cleanPath); 
             });
         }
 
-        // Added waitTime parameter to handle different redirect speeds
-        function showOverlay(msg, isCheckmate = false, waitTime = 5000) {
+        function showOverlay(msg) {
             const overlay = document.getElementById('status-overlay');
-            const msgEl = document.getElementById('overlay-msg');
-            
-            msgEl.innerText = msg;
-            if (isCheckmate) msgEl.classList.add('fatality-text');
-            
+            document.getElementById('overlay-msg').innerText = msg;
             overlay.style.display = 'block';
             clearInterval(timerInterval);
-            
+            // After 3 seconds, send them home with a clean URL
             setTimeout(() => {
                 window.location.replace(window.location.origin + "/friends.html");
-            }, waitTime);
+            }, 3000);
         }
 
         function startTimer() {
@@ -207,9 +204,10 @@
         }
 
         function listen() {
+            // Listen for the OTHER person leaving
             playersRef.on('child_removed', snap => {
                 if (snap.key !== myName) {
-                    showOverlay(`${snap.key.toUpperCase()} SURRENDERED`, false, 5000);
+                    showOverlay(`${snap.key.toUpperCase()} SURRENDERED`);
                 }
             });
 
@@ -247,8 +245,7 @@
             }
 
             if (game.in_checkmate()) {
-                // Blood text and 20 second wait for checkmate
-                showOverlay("CHECKMATE: FATALITY", true, 20000);
+                showOverlay("CHECKMATE: FATALITY");
             } else {
                 document.getElementById('turnStatus').innerText = (game.turn() === myColor) ? "Your Turn" : "Opponent Turn";
             }
