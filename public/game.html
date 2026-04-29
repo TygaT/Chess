@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Tyga's Chess</title>
+    <link href="https://fonts.googleapis.com/css2?family=Nosifer&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css">
     <style>
         :root { --primary: #00d4ff; --bg: #0f172a; --card: #1e293b; --blood: #ef4444; --green: #22c55e; }
@@ -35,8 +36,13 @@
         }
         .small-notify { font-size: 0.85rem; font-weight: bold; color: white; letter-spacing: 0.5px; }
 
-        /* THE BLOOD FONT STYLE */
-        .fatality-style { color: var(--blood) !important; text-shadow: 0 0 8px rgba(239, 68, 68, 0.6); }
+        /* NOSIFER BLOOD FONT */
+        .fatality-style { 
+            font-family: 'Nosifer', cursive; 
+            color: var(--blood) !important; 
+            font-size: 0.7rem !important; /* Smaller to fit the refined bubble */
+            text-shadow: none;
+        }
 
         .highlight-move { box-shadow: inset 0 0 0 3px rgba(255, 255, 0, 0.8) !important; }
         .check-warning { box-shadow: inset 0 0 0 4px var(--blood) !important; }
@@ -118,14 +124,12 @@
             });
         }
 
-        // Updated with custom time parameter
-        function showOverlay(msg, isFatality = false, redirectDelay = 3000) {
+        function showOverlay(msg, isFatality = false, redirectDelay = 5000) {
             const overlay = document.getElementById('status-overlay');
             const msgBox = document.getElementById('overlay-msg');
             
             msgBox.innerText = msg;
             
-            // Add red blood font if it's checkmate
             if(isFatality) {
                 msgBox.classList.add('fatality-style');
             } else {
@@ -214,7 +218,7 @@
         function listen() {
             playersRef.on('child_removed', snap => {
                 if (snap.key !== myName) {
-                    showOverlay(`${snap.key.toUpperCase()} SURRENDERED`, false, 3000);
+                    showOverlay(`${snap.key.toUpperCase()} SURRENDERED`, false, 5000);
                 }
             });
 
@@ -252,7 +256,6 @@
             }
 
             if (game.in_checkmate()) {
-                // RED BLOOD FONT + 20 SECOND WAIT
                 showOverlay("CHECKMATE: FATALITY", true, 20000);
             } else {
                 document.getElementById('turnStatus').innerText = (game.turn() === myColor) ? "Your Turn" : "Opponent Turn";
