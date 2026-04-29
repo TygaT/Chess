@@ -20,7 +20,7 @@
         .main-game-area { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 20px 0; position: relative; }
         #myBoard { width: 92vw; max-width: 400px; border: 4px solid #334155; position: relative; }
 
-        /* CENTERED TEXT OVERLAY */
+        /* CENTERED TEXT ONLY OVERLAY */
         #status-overlay { 
             display: none; 
             position: absolute; 
@@ -29,22 +29,24 @@
             transform: translate(-50%, -50%); 
             z-index: 1000; 
             text-align: center;
-            pointer-events: none;
+            pointer-events: none; /* Allows clicking through if needed */
             width: 100%;
-            background: transparent; /* Ensure no circle/bubble background */
-            border: none;
-            box-shadow: none;
         }
         
-        .small-notify { font-size: 0.85rem; font-weight: bold; color: white; }
+        .small-notify { font-size: 1.2rem; font-weight: bold; color: white; text-shadow: 0 4px 10px rgba(0,0,0,0.8); }
 
         /* NOSIFER BLOOD STYLE - NO BG CIRCLE */
-        .checkmate-blood { 
+        .fatality-style { 
             font-family: 'Nosifer', cursive; 
             color: var(--blood) !important; 
-            font-size: 0.85rem !important; /* Kept same as your standard notify size */
-            text-shadow: 0 0 5px rgba(0, 0, 0, 0.8);
-            display: block;
+            font-size: 1.8rem !important; 
+            text-shadow: 0 0 15px rgba(0, 0, 0, 1);
+            animation: bloodDrip 2s ease-in-out;
+        }
+
+        @keyframes bloodDrip {
+            0% { opacity: 0; transform: scale(0.5); }
+            100% { opacity: 1; transform: scale(1); }
         }
 
         .highlight-move { box-shadow: inset 0 0 0 3px rgba(255, 255, 0, 0.8) !important; }
@@ -128,16 +130,16 @@
             });
         }
 
-        function showOverlay(msg, isMate = false, redirectDelay = 5000) {
+        function showOverlay(msg, isFatality = false, redirectDelay = 5000) {
             const overlay = document.getElementById('status-overlay');
             const msgBox = document.getElementById('overlay-msg');
             
             msgBox.innerText = msg;
             
-            if(isMate) {
-                msgBox.className = 'checkmate-blood';
+            if(isFatality) {
+                msgBox.classList.add('fatality-style');
             } else {
-                msgBox.className = 'small-notify';
+                msgBox.classList.remove('fatality-style');
             }
 
             overlay.style.display = 'block';
@@ -260,7 +262,8 @@
             }
 
             if (game.in_checkmate()) {
-                showOverlay("CHECKMATE", true, 20000);
+                // RED BLOOD FONT IN MIDDLE + 20 SECONDS
+                showOverlay("CHECKMATE: FATALITY", true, 20000);
             } else {
                 document.getElementById('turnStatus').innerText = (game.turn() === myColor) ? "Your Turn" : "Opponent Turn";
             }
