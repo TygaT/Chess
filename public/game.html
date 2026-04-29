@@ -27,12 +27,12 @@
             left: 50%; 
             transform: translate(-50%, -50%); 
             z-index: 1000; 
-            background: rgba(15, 23, 42, 0.9);
+            background: rgba(15, 23, 42, 0.95);
             padding: 8px 15px;
             border-radius: 20px;
             border: 1px solid var(--primary);
             box-shadow: 0 4px 10px rgba(0,0,0,0.5);
-            pointer-events: none; /* Don't block clicks */
+            pointer-events: none;
         }
         .small-notify { font-size: 0.75rem; font-weight: bold; color: white; text-transform: uppercase; white-space: nowrap; }
 
@@ -89,7 +89,7 @@
 
         let board = null, game = new Chess(), myColor = 'w', sourceSquare = null;
         let timerInterval, timeLeft = 45;
-        let isQuitting = false; // Flag to prevent overlay for the quitter
+        let isQuitting = false; 
 
         const roomRef = db.ref('rooms/' + roomID);
         const playersRef = roomRef.child('players');
@@ -112,21 +112,34 @@
             });
         }
 
+        // IMPROVED ROBUST QUIT LOGIC
         function manualQuit() {
-            isQuitting = true; // Set flag so overlay doesn't show for YOU
-            playersRef.child(myName).remove().then(() => {
-                roomRef.remove(); 
-                window.location.replace(window.location.origin + "/friends.html"); 
+            isQuitting = true; 
+            // 1. Unsubscribe from all listeners to prevent errors
+            roomRef.off();
+            playersRef.off();
+
+            // 2. Remove player data and the room
+            playersRef.child(myName).remove().finally(() => {
+                roomRef.remove().finally(() => {
+                    // 3. Force redirect regardless of success
+                    window.location.replace(window.location.origin + "/friends.html");
+                });
             });
+
+            // 4. Safety backup: redirect after 500ms if Firebase is slow
+            setTimeout(() => {
+                window.location.replace(window.location.origin + "/friends.html");
+            }, 500);
         }
 
         function showOverlay(msg) {
-            if (isQuitting) return; // Don't show if we are the ones who quit
+            if (isQuitting) return; 
             const overlay = document.getElementById('status-overlay');
             document.getElementById('overlay-msg').innerText = msg;
             overlay.style.display = 'block';
             clearInterval(timerInterval);
-            // Increased to 5 seconds as requested
+            
             setTimeout(() => {
                 window.location.replace(window.location.origin + "/friends.html");
             }, 5000);
@@ -159,7 +172,7 @@
 
         function forceTurnSwitch() {
             const parts = game.fen().split(' ');
-            parts[1] = parts[1] === 'w' ? 'b' : 'w';
+            parts[1] = (parts[1] === 'w' ? 'b' : 'w');
             roomRef.update({ fen: parts.join(' '), time: Date.now() });
         }
 
@@ -195,11 +208,12 @@
 
         function listen() {
             playersRef.on('child_removed', snap => {
-                if (snap.key !== myName) {
+                if (snap.key !== myName && !isQuitting) {
                     showOverlay(`${snap.key} left`);
                 }
             });
             roomRef.on('value', snap => {
+                if (isQuitting) return;
                 const data = snap.val();
                 if (!data) return;
                 if (data.fen && data.fen !== game.fen()) {
