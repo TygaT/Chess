@@ -17,31 +17,34 @@
         .timer-svg { transform: rotate(-90deg); width: 40px; height: 40px; }
         .timer-circle { fill: none; stroke: var(--green); stroke-width: 4; stroke-dasharray: 100; stroke-dashoffset: 0; transition: stroke-dashoffset 1s linear; }
 
-        .main-game-area { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 20px 0; }
+        .main-game-area { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 20px 0; position: relative; }
         #myBoard { width: 92vw; max-width: 400px; border: 4px solid #334155; position: relative; }
 
+        /* CENTERED TEXT OVERLAY */
         #status-overlay { 
             display: none; 
             position: absolute; 
-            top: 20%; 
+            top: 50%; 
             left: 50%; 
             transform: translate(-50%, -50%); 
             z-index: 1000; 
-            background: rgba(30, 41, 59, 0.95);
-            padding: 12px 20px;
-            border-radius: 30px;
-            border: 1px solid var(--primary);
-            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
-            white-space: nowrap;
+            text-align: center;
+            pointer-events: none;
+            width: 100%;
+            background: transparent; /* Ensure no circle/bubble background */
+            border: none;
+            box-shadow: none;
         }
-        .small-notify { font-size: 0.85rem; font-weight: bold; color: white; letter-spacing: 0.5px; }
+        
+        .small-notify { font-size: 0.85rem; font-weight: bold; color: white; }
 
-        /* NOSIFER BLOOD FONT */
-        .fatality-style { 
+        /* NOSIFER BLOOD STYLE - NO BG CIRCLE */
+        .checkmate-blood { 
             font-family: 'Nosifer', cursive; 
             color: var(--blood) !important; 
-            font-size: 0.7rem !important; /* Smaller to fit the refined bubble */
-            text-shadow: none;
+            font-size: 0.85rem !important; /* Kept same as your standard notify size */
+            text-shadow: 0 0 5px rgba(0, 0, 0, 0.8);
+            display: block;
         }
 
         .highlight-move { box-shadow: inset 0 0 0 3px rgba(255, 255, 0, 0.8) !important; }
@@ -63,10 +66,11 @@
     </div>
 
     <div class="main-game-area">
-        <div id="status-overlay">
-            <div id="overlay-msg" class="small-notify">PLAYER LEFT</div>
+        <div id="myBoard">
+            <div id="status-overlay">
+                <div id="overlay-msg" class="small-notify">PLAYER LEFT</div>
+            </div>
         </div>
-        <div id="myBoard"></div>
     </div>
 
     <nav class="nav-bar">
@@ -124,16 +128,16 @@
             });
         }
 
-        function showOverlay(msg, isFatality = false, redirectDelay = 5000) {
+        function showOverlay(msg, isMate = false, redirectDelay = 5000) {
             const overlay = document.getElementById('status-overlay');
             const msgBox = document.getElementById('overlay-msg');
             
             msgBox.innerText = msg;
             
-            if(isFatality) {
-                msgBox.classList.add('fatality-style');
+            if(isMate) {
+                msgBox.className = 'checkmate-blood';
             } else {
-                msgBox.classList.remove('fatality-style');
+                msgBox.className = 'small-notify';
             }
 
             overlay.style.display = 'block';
@@ -256,7 +260,7 @@
             }
 
             if (game.in_checkmate()) {
-                showOverlay("CHECKMATE: FATALITY", true, 20000);
+                showOverlay("CHECKMATE", true, 20000);
             } else {
                 document.getElementById('turnStatus').innerText = (game.turn() === myColor) ? "Your Turn" : "Opponent Turn";
             }
