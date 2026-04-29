@@ -16,25 +16,25 @@
         .timer-svg { transform: rotate(-90deg); width: 40px; height: 40px; }
         .timer-circle { fill: none; stroke: var(--green); stroke-width: 4; stroke-dasharray: 100; stroke-dashoffset: 0; transition: stroke-dashoffset 1s linear; }
 
-        .main-game-area { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 20px 0; }
+        .main-game-area { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 20px 0; position: relative; }
         #myBoard { width: 92vw; max-width: 400px; border: 4px solid #334155; position: relative; }
 
-        /* REFINED SMALL NOTIFICATION */
+        /* TINY BOARD NOTIFICATION */
         #status-overlay { 
             display: none; 
             position: absolute; 
-            top: 20%; 
+            top: 50%; 
             left: 50%; 
             transform: translate(-50%, -50%); 
             z-index: 1000; 
-            background: rgba(30, 41, 59, 0.95);
-            padding: 12px 20px;
-            border-radius: 30px;
+            background: rgba(15, 23, 42, 0.9);
+            padding: 8px 15px;
+            border-radius: 20px;
             border: 1px solid var(--primary);
-            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
-            white-space: nowrap;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+            pointer-events: none; /* Don't block clicks */
         }
-        .small-notify { font-size: 0.85rem; font-weight: bold; color: white; letter-spacing: 0.5px; }
+        .small-notify { font-size: 0.75rem; font-weight: bold; color: white; text-transform: uppercase; white-space: nowrap; }
 
         .highlight-move { box-shadow: inset 0 0 0 3px rgba(255, 255, 0, 0.8) !important; }
         .check-warning { box-shadow: inset 0 0 0 4px var(--blood) !important; }
@@ -51,14 +51,15 @@
         <div class="timer-container">
             <svg class="timer-svg"><circle class="timer-circle" cx="20" cy="20" r="16"></circle></svg>
         </div>
-        <div id="turnStatus" class="status-text">Connecting...</div>
+        <div id="turnStatus" class="status-text">Tyga Chess</div>
     </div>
 
     <div class="main-game-area">
-        <div id="status-overlay">
-            <div id="overlay-msg" class="small-notify">PLAYER LEFT</div>
+        <div id="myBoard">
+            <div id="status-overlay">
+                <div id="overlay-msg" class="small-notify">PLAYER LEFT</div>
+            </div>
         </div>
-        <div id="myBoard"></div>
     </div>
 
     <nav class="nav-bar">
@@ -88,6 +89,8 @@
 
         let board = null, game = new Chess(), myColor = 'w', sourceSquare = null;
         let timerInterval, timeLeft = 45;
+        let isQuitting = false; // Flag to prevent overlay for the quitter
+
         const roomRef = db.ref('rooms/' + roomID);
         const playersRef = roomRef.child('players');
 
@@ -109,27 +112,24 @@
             });
         }
 
-        // --- THE QUIT LOGIC ---
         function manualQuit() {
-            // 1. Remove myself from the room
+            isQuitting = true; // Set flag so overlay doesn't show for YOU
             playersRef.child(myName).remove().then(() => {
-                // 2. Wipe the whole room if I'm leaving
                 roomRef.remove(); 
-                // 3. Clear the URL to prevent ghosting
-                const cleanPath = window.location.origin + "/friends.html";
-                window.location.replace(cleanPath); 
+                window.location.replace(window.location.origin + "/friends.html"); 
             });
         }
 
         function showOverlay(msg) {
+            if (isQuitting) return; // Don't show if we are the ones who quit
             const overlay = document.getElementById('status-overlay');
             document.getElementById('overlay-msg').innerText = msg;
             overlay.style.display = 'block';
             clearInterval(timerInterval);
-            // After 3 seconds, send them home with a clean URL
+            // Increased to 5 seconds as requested
             setTimeout(() => {
                 window.location.replace(window.location.origin + "/friends.html");
-            }, 3000);
+            }, 5000);
         }
 
         function startTimer() {
@@ -142,7 +142,6 @@
                 timeLeft = 45;
                 circle.style.transition = 'none';
                 circle.style.strokeDashoffset = '0';
-                circle.style.stroke = "#22c55e"; 
                 circle.getBoundingClientRect(); 
                 circle.style.transition = 'stroke-dashoffset 1s linear';
 
@@ -174,25 +173,16 @@
                 const square = $(this).attr('data-square');
                 const piece = game.get(square);
                 if (game.turn() !== myColor || game.game_over()) return;
-
                 if (!sourceSquare) {
-                    if (piece && piece.color === myColor) {
-                        sourceSquare = square;
-                        showMoves(square);
-                    }
+                    if (piece && piece.color === myColor) { sourceSquare = square; showMoves(square); }
                 } else {
                     const move = game.move({ from: sourceSquare, to: square, promotion: 'q' });
                     if (move) {
                         board.position(game.fen());
-                        document.querySelector('.timer-container').style.opacity = "0";
-                        clearInterval(timerInterval);
                         roomRef.update({ fen: game.fen(), lastMove: { from: sourceSquare, to: square }, time: Date.now() });
                         sourceSquare = null;
                         $('.square-55d63').removeClass('highlight-move');
-                    } else if (piece && piece.color === myColor) {
-                        sourceSquare = square;
-                        showMoves(square);
-                    }
+                    } else if (piece && piece.color === myColor) { sourceSquare = square; showMoves(square); }
                 }
             });
         }
@@ -204,20 +194,16 @@
         }
 
         function listen() {
-            // Listen for the OTHER person leaving
             playersRef.on('child_removed', snap => {
                 if (snap.key !== myName) {
-                    showOverlay(`${snap.key.toUpperCase()} SURRENDERED`);
+                    showOverlay(`${snap.key} left`);
                 }
             });
-
             roomRef.on('value', snap => {
                 const data = snap.val();
                 if (!data) return;
                 if (data.fen && data.fen !== game.fen()) {
-                    game.load(data.fen);
-                    board.position(data.fen);
-                    startTimer();
+                    game.load(data.fen); board.position(data.fen); startTimer();
                 }
                 updateGameUI(data.lastMove);
             });
@@ -229,7 +215,6 @@
                 $('.square-' + lastMove.from).addClass('highlight-move');
                 $('.square-' + lastMove.to).addClass('highlight-move');
             }
-
             if (game.in_check()) {
                 const turn = game.turn();
                 const boardArray = game.board();
@@ -243,14 +228,9 @@
                     }
                 }
             }
-
-            if (game.in_checkmate()) {
-                showOverlay("CHECKMATE: FATALITY");
-            } else {
-                document.getElementById('turnStatus').innerText = (game.turn() === myColor) ? "Your Turn" : "Opponent Turn";
-            }
+            if (game.in_checkmate()) showOverlay("CHECKMATE");
+            else document.getElementById('turnStatus').innerText = (game.turn() === myColor) ? "Your Turn" : "Opponent Turn";
         }
-
         init();
     </script>
 </body>
